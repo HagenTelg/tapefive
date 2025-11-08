@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tapefive"
+version = "0.0.1"
+description = "High-level Python API for LBLRTM/LNFL: build TAPE5, run models, parse outputs."
+authors = [{ name = "Hagen Telg", email = "hagen.telg@noaa.gov" }]
+requires-python = ">=3.10"
+
+# Keep deps minimal for now; add xarray/pydantic later.
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["tapefive"]
