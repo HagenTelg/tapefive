@@ -35,3 +35,5 @@ def place_in_string(values, positions, specs=None, total_width=None):
 
     s = "".join(parts)
     return s if total_width is None else s.ljust(total_width)
+
+

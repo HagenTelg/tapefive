@@ -256,9 +256,9 @@ class Tape5Generator():
                 'ZERO' : 0,
                 'NOPRNT' : 0,
                 'NMOL' : '',
-                'IPUNCH' : '',
+                'IPUNCH' : 1, #TODO configure
                 'IFXTYP' : '',
-                'MUNITS' : '',
+                'MUNITS' : 0, #TODO configure this is the unit for the IPUNCH output above
                 'RE' : '',
                 'HSPACE' : '',
                 'VBAR' : '',
