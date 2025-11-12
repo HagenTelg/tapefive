@@ -6,28 +6,34 @@ import xarray as xr
 from . import fileio
 from . import tape5parser
 import textwrap
+from . import lnfl
 
 
 class Lblrtm():
     def __init__(self, verbose = False):
         self.configuration = LblrtmConfig()
         self._verbose = verbose
+        self.lnfl = lnfl.Lnfl(self, verbose=verbose)
+
 
     @property
     def tape5(self):
         tg = tape5parser.Tape5Generator(self)
         return tg 
 
-    # # def tape3
-    # def create_filesystem(self):
+    @property
+    def tape5_lnfl(self):
+        tg = tape5parser.Tape5GeneratorLnfl(self)
+        return tg
+
     def _create_filesystem(self):
         if self._verbose:
-            print(f"Creating LBLRTM filesystem at {self.configuration.environment.base_dir}")
+            print(f"Creating LBLRTM filesystem at {self.configuration.environment.project_directory}")
         # level 0
-        self.configuration.environment.base_dir.mkdir(parents=True, exist_ok=True)
+        self.configuration.environment.project_directory.mkdir(parents=True, exist_ok=True)
 
         # level 1
-        p2fld_run = self.configuration.environment.base_dir.joinpath('run')
+        p2fld_run = self.configuration.environment.project_directory.joinpath(self.configuration.environment.run_name)
         p2fld_run.mkdir(parents=True, exist_ok=True)
 
         # level 2
@@ -37,7 +43,7 @@ class Lblrtm():
         p2fld_run_lnfl.mkdir(parents=True, exist_ok=True)
 
         # level 3.lblrtm
-        ## create TAPE5
+        ## create path to TAPE5
         p2f_lblrtm_tape5 = p2fld_run_lblrtm.joinpath('TAPE5')
 
         ##  check/create TAPE3
@@ -54,7 +60,7 @@ class Lblrtm():
         if not self.p2f_lblrtm_tape3_link.exists():
             self.p2f_lblrtm_tape3_link.symlink_to(self.p2f_lblrtm_tape3_orig)
         self._filesystem = dict(
-            base_dir = self.configuration.environment.base_dir,
+            project_directory = self.configuration.environment.project_directory,
             p2fld_run_lblrtm = p2fld_run_lblrtm,
             p2f_lblrtm_tape5 = p2f_lblrtm_tape5,)
         
@@ -68,7 +74,8 @@ class Lblrtm():
             capture_output=True,
             text=True,            # str instead of bytes
         )
-        print(result.stdout+result.stderr)
+        if self._verbose:
+            print(result.stdout+result.stderr)
         self.tp_result = result
         if result.stderr.strip() == "STOP  LBLRTM EXIT":
             out = 0
@@ -93,6 +100,7 @@ class Lblrtm():
 
     def run(self):
         self._create_filesystem()
+        self.lnfl.run(force_run = False)
         self._remove_old_results()
         self._write_tape5()
         out = self._execute_lblrtm()
@@ -130,28 +138,59 @@ class LblrtmConfig():
         self.surface = Surface()
         self.atmospheric_layers = AtmosphericLayers()
         self.environment = Environment()
+        self.geometry = Geometry()
     
     def __str__(self) -> str:
         txt = 'doit'
         return txt
 
 class Environment():
-    __slots__ = ('_base_dir',)
+    __slots__ = ('_project_directory','_run_name','_linefile')
 
     def __init__(self):
-        self.base_dir = None
+        self.project_directory = None
+        self.run_name = None
+        self.linefile = None
         pass
 
     @property
-    def base_dir(self) -> str:
+    def project_directory(self) -> str:
         """Base directory for LBLRTM temporary files."""
-        return self._base_dir
+        return self._project_directory
     
-    @base_dir.setter
-    def base_dir(self, v: str | pl.Path | None = None) -> None:
+    @project_directory.setter
+    def project_directory(self, v: str | pl.Path | None = None) -> None:
         if isinstance(v, type(None)):
             v = '~/tmp/tapefive_lblrtm'
-        self._base_dir = pl.Path(v).expanduser()
+        self._project_directory = pl.Path(v).expanduser()
+
+    @property
+    def run_name(self) -> str:
+        """Directory for LBLRTM run files."""
+        return self._run_name
+    
+    @run_name.setter
+    def run_name(self, v: str | pl.Path | None = None) -> None:
+        if isinstance(v, type(None)):
+            fldname = 'run'
+        else:
+            fldname = v
+        self._run_name = fldname
+
+    @property
+    def linefile(self) -> str:
+        """Path to LNFL linefile."""
+        return self._linefile
+    
+    @linefile.setter
+    def linefile(self, v: str | pl.Path | None = None) -> None:
+        if isinstance(v, type(None)):
+            v = '/home/hagen/prog/AER_Line_File/AER_Line_File/line_file/aer_v_3.8.1'
+        self._linefile = pl.Path(v).expanduser()
+
+        
+
+    
 
 class SpectralGrid():
     __slots__ = ("_fmin", "_fmax", "_layering_control",
@@ -351,6 +390,21 @@ class AtmosphericLayers():
 
     def __init__(self):
         pass
+
+class Geometry():
+    __slots__ = ('_slant_angle')
+    def __init__(self):
+        self._slant_angle = 0
+
+    @property
+    def slant_angle(self) -> float:
+        """Slant angle of the path of the readiation in degree. Same as solar zenith angle."""
+        return self._slant_angle
+    
+    @slant_angle.setter
+    def slant_angle(self, v: float | int):
+        assert(0<=v<=90), f'zenith angle needs to be between 0 and 90 degree, {v} given.'
+        self._slant_angle = v
 
 from dataclasses import dataclass, field
 
