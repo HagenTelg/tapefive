@@ -9,8 +9,16 @@ description = "High-level Python API for LBLRTM/LNFL: build TAPE5, run models, p
 authors = [{ name = "Hagen Telg", email = "hagen.telg@noaa.gov" }]
 requires-python = ">=3.10"
 
-# Keep deps minimal for now; add xarray/pydantic later.
 dependencies = []
+
+[project.optional-dependencies]
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material",
+  "mkdocstrings[python]",
+  "mkdocs-jupyter",
+  "pymdown-extensions",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["tapefive"]
