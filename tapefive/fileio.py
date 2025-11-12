@@ -61,7 +61,7 @@ def read_tape27(path):
 
 
 
-def read_tape12(path: str):
+def read_tape12(path: str, var_name: str = "optical_depth", units: str = '1') -> xr.Dataset:
     """
     Read an LBLRTM TAPE12 (Fortran unformatted) binary file and return an xarray.Dataset.
 
@@ -169,7 +169,7 @@ def read_tape12(path: str):
     val = np.concatenate(val_blocks)
 
     return xr.Dataset(
-        data_vars={"value": ("wavenumber", val)},
+        data_vars={var_name: ("wavenumber", val,  {"long_name": var_name, "units": units}),},
         coords={"wavenumber": ("wavenumber", wn)},
         attrs={
             "source": os.path.basename(path),

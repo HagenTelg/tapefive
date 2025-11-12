@@ -74,6 +74,12 @@ class Tape5Generator():
     def record_12(self):
         #RECORD 1.2
         # IHIRAC
+
+        if self.configuration.spectral_grid.layering_control == 'adaptive':
+            od = 0
+        elif self.configuration.spectral_grid.layering_control == 'exact':
+            od = 1
+
         vp = ((f'HI={self.configuration.molecular_spectral_lines._lineshape_no}',5),
             ('F4=1', 10),#TODO configure
             ('CN=5', 15),#TODO configure
@@ -86,7 +92,7 @@ class Tape5Generator():
             ('AM=1', 50),#TODO configure
             ('MG=0', 55),
             ('LA=0', 60),
-            ('OD=0', 65),
+            (f'OD={od}', 65), #TODO configure
             ('XS=0', 70),
             ('00', 75),
             ('00', 80),
@@ -101,11 +107,15 @@ class Tape5Generator():
     def record_13(self):
         #RECORD 1.3
         # if self.configuration.molecular_spectral_lines._lineshape_no > 0:
-        V1 = self.configuration.spectral_grid.fmin
+        V1 = self.configuration.spectral_grid.fmin - 25 # LBLRTM recommends a 25 cm^-1 buffer
         V1 = f'{V1:10.3E}'
-        V2 = self.configuration.spectral_grid.fmax
+        V2 = self.configuration.spectral_grid.fmax + 25 # LBLRTM recommends a 25 cm^-1 buffer
         V2 = f'{V2:10.3E}'
-        SAMPLE = float(4) # TODO configure
+        if self.configuration.spectral_grid.layering_control == 'adaptive':
+            SAMPLE = self.configuration.spectral_grid.df
+        elif self.configuration.spectral_grid.layering_control == 'exact':
+            SAMPLE = 0
+        # SAMPLE = float(4) # TODO configure
         SAMPLE = f'{SAMPLE:10.3E}'
         DVSET = float(0) # TODO configure
         DVSET = f'{DVSET:10.3E}'
@@ -118,7 +128,10 @@ class Tape5Generator():
         DPTFAC = float(0)
         DPTFAC = f'{DPTFAC:10.3E}'
         ILNFLG = int(0)
-        DVOUT = float(0)
+        if self.configuration.spectral_grid.layering_control == 'adaptive':
+            DVOUT = 0
+        elif self.configuration.spectral_grid.layering_control == 'exact':
+            DVOUT = self.configuration.spectral_grid.df
         DVOUT = f'{DVOUT:10.3E}'
         NMOL_SCAL = int(39) # TODO configure
         
@@ -146,100 +159,118 @@ class Tape5Generator():
     def record_13a(self):
         #RECORD 1.3a
         # if self.configuration.molecular_spectral_lines._lineshape_no > 0:
-        H2O = 'P' # TODO configure
-        CO2 = 0
-        O3 = 0
-        N2O = 0
-        CO = 0
-        CH4 = 0
-        O2 = 0
-        NO = 0
-        SO2 = 0
-        NO2 = 0
-        NH3 = 0
-        HNO3 = 0
-        OH = 0
-        HF = 0
-        HCL = 0
-        HBR = 0
-        HI = 0
-        CLO = 0
-        OCS = 0
-        H2CO = 0
-        HOCL = 0
-        N2 = 0
-        HCN = 0
-        CH3CL = 0
-        H2O2 = 0
-        C2H2 = 0
-        C2H6 = 0
-        PH3 = 0
-        COF2 = 0
-        SF6 = 0
-        H2S = 0
-        HCOOH = 0
-        HO2 = 0
-        O = 0
-        CLONO2 = 0
-        NOp = 0
-        HOBR = 0
-        C2H4 = 0
-        CH3OH = 0
-        record13a = f'{H2O}{CO2}{O3}{N2O}{CO}{CH4}{O2}{NO}{SO2}{NO2}{NH3}{HNO3}{OH}{HF}{HCL}{HBR}{HI}{CLO}{OCS}{H2CO}{HOCL}{N2}{HCN}{CH3CL}{H2O2}{C2H2}{C2H6}{PH3}{COF2}{SF6}{H2S}{HCOOH}{HO2}{O}{CLONO2}{NOp}{HOBR}{C2H4}{CH3OH}'
-                # record12 += '\n' + record13a
-        # tape5 = '\n'.join([record11, record12])
+        # H2O = 'P' # TODO configure
+        # CO2 = 0
+        # O3 = 0
+        # N2O = 0
+        # CO = 0
+        # CH4 = 0
+        # O2 = 0
+        # NO = 0
+        # SO2 = 0
+        # NO2 = 0
+        # NH3 = 0
+        # HNO3 = 0
+        # OH = 0
+        # HF = 0
+        # HCL = 0
+        # HBR = 0
+        # HI = 0
+        # CLO = 0
+        # OCS = 0
+        # H2CO = 0
+        # HOCL = 0
+        # N2 = 0
+        # HCN = 0
+        # CH3CL = 0
+        # H2O2 = 0
+        # C2H2 = 0
+        # C2H6 = 0
+        # PH3 = 0
+        # COF2 = 0
+        # SF6 = 0
+        # H2S = 0
+        # HCOOH = 0
+        # HO2 = 0
+        # O = 0
+        # CLONO2 = 0
+        # NOp = 0
+        # HOBR = 0
+        # C2H4 = 0
+        # CH3OH = 0
+        # record13a = f'{H2O}{CO2}{O3}{N2O}{CO}{CH4}{O2}{NO}{SO2}{NO2}{NH3}{HNO3}{OH}{HF}{HCL}{HBR}{HI}{CLO}{OCS}{H2CO}{HOCL}{N2}{HCN}{CH3CL}{H2O2}{C2H2}{C2H6}{PH3}{COF2}{SF6}{H2S}{HCOOH}{HO2}{O}{CLONO2}{NOp}{HOBR}{C2H4}{CH3OH}'
+
+        transdict = {'pwv': 'P', 'direct': 1, 'column': 'C', 'column_dobson': 'D', 'column_volmix': 'M'}
+        record13a = ''
+        for m, o in self.configuration.molecular_spectral_lines.molecules._by_name.items():
+            if o.enable:
+                record13a += str(transdict[o.scale_unit])
+            else:
+                record13a += '0'
         return record13a
     
     @property
     def record_13b(self):
         #RECORD 1.3b
         # concentrations for each molecule
-        # if self.configuration.molecular_spectral_lines._lineshape_no > 0:
-        H2O = 0.5
-        CO2 = 0
-        O3 = 0
-        N2O = 0
-        CO = 0
-        CH4 = 0
-        O2 = 0
-        NO = 0
-        SO2 = 0
-        NO2 = 0
-        NH3 = 0
-        HNO3 = 0
-        OH = 0
-        HF = 0
-        HCL = 0
-        HBR = 0
-        HI = 0
-        CLO = 0
-        OCS = 0
-        H2CO = 0
-        HOCL = 0
-        N2 = 0
-        HCN = 0
-        CH3CL = 0
-        H2O2 = 0
-        C2H2 = 0
-        C2H6 = 0
-        PH3 = 0
-        COF2 = 0
-        SF6 = 0
-        H2S = 0
-        HCOOH = 0
-        HO2 = 0
-        O = 0
-        CLONO2 = 0
-        NOp = 0
-        HOBR = 0
-        C2H4 = 0
-        CH3OH = 0
 
+
+        # if self.configuration.molecular_spectral_lines._lineshape_no > 0:
+        # H2O = 0.5
+        # CO2 = 0
+        # O3 = 0
+        # N2O = 0
+        # CO = 0
+        # CH4 = 0
+        # O2 = 0
+        # NO = 0
+        # SO2 = 0
+        # NO2 = 0
+        # NH3 = 0
+        # HNO3 = 0
+        # OH = 0
+        # HF = 0
+        # HCL = 0
+        # HBR = 0
+        # HI = 0
+        # CLO = 0
+        # OCS = 0
+        # H2CO = 0
+        # HOCL = 0
+        # N2 = 0
+        # HCN = 0
+        # CH3CL = 0
+        # H2O2 = 0
+        # C2H2 = 0
+        # C2H6 = 0
+        # PH3 = 0
+        # COF2 = 0
+        # SF6 = 0
+        # H2S = 0
+        # HCOOH = 0
+        # HO2 = 0
+        # O = 0
+        # CLONO2 = 0
+        # NOp = 0
+        # HOBR = 0
+        # C2H4 = 0
+        # CH3OH = 0
+
+
+        
+        
+        # mollist = [H2O,CO2,O3,N2O,CO,CH4,O2,NO,SO2,NO2,NH3,HNO3,OH,HF,HCL,HBR,HI,CLO,OCS,H2CO,HOCL,N2,HCN,CH3CL,H2O2,C2H2,C2H6,PH3,COF2,SF6,H2S,HCOOH,HO2,O,CLONO2,NOp,HOBR,C2H4,CH3OH]
+        # mollist = [f"{m:15.7E}" for m in mollist]
+
+        mollist = []
+        for m, o in self.configuration.molecular_spectral_lines.molecules._by_name.items():
+            if o.enable:
+                value = o.scale
+            else:
+                value = 0.0
+            mollist.append(f"{value:15.7E}")
 
         chunk_size = 8
-        
-        mollist = [H2O,CO2,O3,N2O,CO,CH4,O2,NO,SO2,NO2,NH3,HNO3,OH,HF,HCL,HBR,HI,CLO,OCS,H2CO,HOCL,N2,HCN,CH3CL,H2O2,C2H2,C2H6,PH3,COF2,SF6,H2S,HCOOH,HO2,O,CLONO2,NOp,HOBR,C2H4,CH3OH]
-        mollist = [f"{m:15.7E}" for m in mollist]
         wrapped = [mollist[i:i + chunk_size] for i in range(0, len(mollist), chunk_size)]
         txt = ''
         for l in wrapped:
