@@ -1,3 +1,4 @@
+link to [documentation](https://hagentelg.github.io/tapefive/)
 # tapefive
 (under construction, not ready for action) A high-level Python API for LBLRTM: build and validate TAPE5, run LNFL/LBLRTM, and parse outputs with clear errors.
 
